@@ -51,10 +51,6 @@
 #include "contiki.h"
 
 #include "mrf24j40.h"
-#include "mrf24j40_arch.h"
-
-#include <pic32_spi.h>
-#include <pic32_irq.h>
 
 #include "net/packetbuf.h"
 #include "net/netstack.h"
@@ -81,29 +77,29 @@ static volatile uint8_t receive_on;
 static void
 set_short_add_mem(uint8_t addr, uint8_t val)
 {
-  const uint8_t tmp = MRF24J40_INTERRUPT_ENABLE_STAT();
+  const uint8_t tmp = mrf24j40_arch_is_irq_enabled();
   uint8_t msg[2];
 
   msg[0] = (addr << 1) | 0x01;
   msg[1] = val;
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_CLR();
+    mrf24j40_arch_irq_disable();
   }
 
-  MRF24J40_CSn_LOW();
-  MRF24J40_SPI_PORT_WRITE(msg, 2);
-  MRF24J40_CSn_HIGH();
+  mrf24j40_arch_select();
+  mrf24j40_arch_spi_write(msg, 2);
+  mrf24j40_arch_deselect();
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_SET();
+    mrf24j40_arch_irq_enable();
   }
 }
 /*---------------------------------------------------------------------------*/
 static void
 set_long_add_mem(uint16_t addr, uint8_t val)
 {
-  const uint8_t tmp = MRF24J40_INTERRUPT_ENABLE_STAT();
+  const uint8_t tmp = mrf24j40_arch_is_irq_enabled();
   uint8_t msg[3];
 
   msg[0] = (((uint8_t)(addr >> 3)) & 0x7F) | 0x80;
@@ -111,37 +107,37 @@ set_long_add_mem(uint16_t addr, uint8_t val)
   msg[2] = val;
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_CLR();
+    mrf24j40_arch_irq_disable();
   }
 
-  MRF24J40_CSn_LOW();
-  MRF24J40_SPI_PORT_WRITE(msg, 3);
-  MRF24J40_CSn_HIGH();
+  mrf24j40_arch_select();
+  mrf24j40_arch_spi_write(msg, 3);
+  mrf24j40_arch_deselect();
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_SET();
+    mrf24j40_arch_irq_enable();
   }
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
 get_short_add_mem(uint8_t addr)
 {
-  const uint8_t tmp = MRF24J40_INTERRUPT_ENABLE_STAT();
+  const uint8_t tmp = mrf24j40_arch_is_irq_enabled();
   uint8_t ret_val;
   
   addr <<= 1;
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_CLR();
+    mrf24j40_arch_irq_disable();
   }
 
-  MRF24J40_CSn_LOW();
-  MRF24J40_SPI_PORT_WRITE(&addr, 1);
-  MRF24J40_SPI_PORT_READ(&ret_val, 1);
-  MRF24J40_CSn_HIGH();
+  mrf24j40_arch_select();
+  mrf24j40_arch_spi_write(&addr, 1);
+  mrf24j40_arch_spi_read(&ret_val, 1);
+  mrf24j40_arch_deselect();
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_SET();
+    mrf24j40_arch_irq_enable();
   }
 
   return ret_val;
@@ -150,7 +146,7 @@ get_short_add_mem(uint8_t addr)
 static uint8_t
 get_long_add_mem(uint16_t addr)
 {
-  const uint8_t tmp = MRF24J40_INTERRUPT_ENABLE_STAT();
+  const uint8_t tmp = mrf24j40_arch_is_irq_enabled();
   uint8_t ret_val;
   uint8_t msg[2];
 
@@ -158,16 +154,16 @@ get_long_add_mem(uint16_t addr)
   msg[1] = ((uint8_t)(addr << 5)) & 0xE0;
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_CLR();
+    mrf24j40_arch_irq_disable();
   }
 
-  MRF24J40_CSn_LOW();
-  MRF24J40_SPI_PORT_WRITE(msg, 2);
-  MRF24J40_SPI_PORT_READ(&ret_val, 1);
-  MRF24J40_CSn_HIGH();
+  mrf24j40_arch_select();
+  mrf24j40_arch_spi_write(msg, 2);
+  mrf24j40_arch_spi_read(&ret_val, 1);
+  mrf24j40_arch_deselect();
 
   if(tmp) {
-    MRF24J40_INTERRUPT_ENABLE_SET();
+    mrf24j40_arch_irq_enable();
   }
 
   return ret_val;
@@ -405,7 +401,7 @@ mrf24j40_get_rxfifo(uint8_t *buf, uint8_t buf_len)
 {
   uint8_t i, len;
 
-  MRF24J40_INTERRUPT_ENABLE_CLR();
+  mrf24j40_arch_irq_disable();
 
   /* Disable packet reception */
   set_short_add_mem(MRF24J40_BBREG1, 0b00000100);
@@ -443,7 +439,7 @@ mrf24j40_get_rxfifo(uint8_t *buf, uint8_t buf_len)
   flush_rx_fifo();
 #endif
   
-  MRF24J40_INTERRUPT_ENABLE_SET();
+  mrf24j40_arch_irq_enable();
 
   return len == 0 ? -1 : len;
 }
@@ -457,7 +453,7 @@ static void
 put_to_sleep(void)
 {
   /* Prepare WAKE pin: */
-  MRF24J40_WAKE = 0;
+  mrf24j40_arch_wake_pin(0);
 
   /* Enable Immediate Wake-up mode */
   set_short_add_mem(MRF24J40_WAKECON, 0b10000000);
@@ -480,7 +476,7 @@ static void
 wake(void)
 {
   /* Wake-up */
-  MRF24J40_WAKE = 1;
+  mrf24j40_arch_wake_pin(1);
 
   /* RF State Machine reset */
   set_short_add_mem(MRF24J40_RFCTL, 0b00000100);
@@ -524,24 +520,17 @@ int
 mrf24j40_init(void)
 {
   uint8_t i;
+  int rc;
   
-  /* Set the IO pins direction */
-  MRF24J40_PINDIRECTION_INIT();
-  
-  /* Set interrupt registers and reset flags */
-  MRF24J40_INTERRUPT_INIT(6, 3);
-
-  if(MRF24J40_SPI_PORT_INIT(10000000, SPI_DEFAULT) < 0)
-    return -1;
-
   PRINTF("MRF24J40 Initialization started\n");
+  rc = mrf24j40_arch_init();
+  if (rc < 0) {
+	  return rc;
+  }
 
-  MRF24J40_HARDRESET_LOW();
-
+  mrf24j40_arch_hard_reset(1);
   clock_delay_usec(2500);
-  
-  MRF24J40_HARDRESET_HIGH();
-  
+  mrf24j40_arch_hard_reset(0);
   clock_delay_usec(2500);
 
   /*
@@ -856,7 +845,7 @@ mrf24j40_pending_packet(void)
   return pending;
 }
 /*---------------------------------------------------------------------------*/
-MRF24J40_ISR()
+void mrf24j40_irq_handler(void)
 {
   INT_status int_status;
   TX_status tx_status;
@@ -891,8 +880,6 @@ MRF24J40_ISR()
       status_tx = MRF24J40_TX_ERR_NONE;
     }
   }
-  
-  MRF24J40_INTERRUPT_FLAG_CLR();
   
   ENERGEST_OFF(ENERGEST_TYPE_IRQ);
 }

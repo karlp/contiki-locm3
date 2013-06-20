@@ -41,8 +41,8 @@
  */
 
 /** 
- * \file   mrf24j40_arch.h
- * \brief  MRF24J40 Specific Arch Conf
+ * \file   mrf24j40-arch.h
+ * \brief  MRF24J40 platform specific versions of the arch code
  * \author Giovanni Pellerano <giovanni.pellerano@evilaliv3.org>
  * \date   2012-03-21
  */

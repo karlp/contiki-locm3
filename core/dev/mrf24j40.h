@@ -42,16 +42,14 @@
 
 /**
  * \file   mrf24j40.h
- * \brief  MRF24J40 Driver
+ * \brief  MRF24J40 platform independent driver
  * \author Giovanni Pellerano <giovanni.pellerano@evilaliv3.org>
  * \date   2012-03-21
  */
 
 #ifndef __MRF24J40_H__
 #define __MRF24J40_H__
-
-#include <pic32_irq.h>
-#include <pic32_spi.h>
+#include <stdint.h>
 
 extern const struct radio_driver mrf24j40_driver;
 
@@ -78,6 +76,19 @@ uint8_t mrf24j40_get_last_rssi(void);
 uint8_t mrf24j40_get_last_lqi(void);
 int32_t mrf24j40_set_txfifo(const uint8_t * buf, uint8_t buf_len);
 int32_t mrf24j40_get_rxfifo(uint8_t * buf, uint8_t buf_len);
+void mrf24j40_irq_handler(void);
+
+/* Arch driver must supply these */
+void mrf24j40_arch_wake_pin(int val);
+void mrf24j40_arch_hard_reset(int val);
+int mrf24j40_arch_init(void);
+int mrf24j40_arch_is_irq_enabled(void);
+void mrf24j40_arch_irq_enable(void);
+void mrf24j40_arch_irq_disable(void);
+void mrf24j40_arch_select(void);
+void mrf24j40_arch_deselect(void);
+void mrf24j40_arch_spi_write(uint8_t *data, int length);
+void mrf24j40_arch_spi_read(uint8_t *data, int length);
 
 /* Long address registers */
 #define MRF24J40_RFCON0         (0x200)
