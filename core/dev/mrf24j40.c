@@ -855,7 +855,7 @@ void mrf24j40_irq_handler(void)
   int_status.val = get_short_add_mem(MRF24J40_INTSTAT);
 
   if(!int_status.val) {
-    return;
+    return;  // FIXME - bad return path! (add energest _at least_)
   }
 
   if(int_status.bits.RXIF) {
