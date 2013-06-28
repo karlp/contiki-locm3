@@ -760,6 +760,8 @@ mrf24j40_transmit(unsigned short len)
   
   status_tx = MRF24J40_TX_WAIT;
 
+  mrf24j40_arch_irq_enable();
+
   set_short_add_mem(MRF24J40_TXNCON, 0b00000001);
 
   /* Wait until the transmission has finished. */
