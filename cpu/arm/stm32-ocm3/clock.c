@@ -53,8 +53,9 @@ static volatile clock_time_t current_clock = 0;
 static volatile unsigned long current_seconds = 0;
 static unsigned int second_countdown = CLOCK_SECOND;
 
-/* Systick at AHB_SPEED/8 Mhz, this many ticks per usec */
-#define CLOCK_MICROSECOND_SYSTICK ((AHB_SPEED/8)/1000000)
+/* Systick at AHB_SPEED/8 Mhz, this many ticks per ms/us */
+#define CLOCK_SYSTICK_MILLISECOND (AHB_SPEED / 8 / CLOCK_SECOND)
+#define CLOCK_SYSTICK_MICROSECOND (CLOCK_SYSTICK_MILLISECOND / 1000)
 
 void
 sys_tick_handler(void)
@@ -84,7 +85,7 @@ void
 clock_init()
 {
 	systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);
-	systick_set_reload(AHB_SPEED / 8 / CLOCK_SECOND);
+	systick_set_reload(CLOCK_SYSTICK_MILLISECOND);
 	systick_interrupt_enable();
 	systick_counter_enable();
 }
@@ -132,7 +133,7 @@ static
 void inner_delay_usec_one(void)
 {
 	uint32_t before = STK_VAL;
-	while (STK_VAL - before <  CLOCK_MICROSECOND_SYSTICK) {
+	while (STK_VAL - before <  CLOCK_SYSTICK_MICROSECOND) {
 		;
 	}
 }
