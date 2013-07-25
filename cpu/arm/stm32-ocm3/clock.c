@@ -96,6 +96,12 @@ clock_time(void)
 	return current_clock;
 }
 
+uint32_t
+clock_useconds()
+{
+	return (current_clock * 1000) + ((STK_LOAD - STK_VAL) / CLOCK_SYSTICK_MICROSECOND);
+}
+
 CCIF unsigned long
 clock_seconds(void)
 {
@@ -129,15 +135,6 @@ clock_delay(unsigned int t)
 	clock_delay_usec(3 * t);
 }
 
-static
-void inner_delay_usec_one(void)
-{
-	uint32_t before = STK_VAL;
-	while (STK_VAL - before <  CLOCK_SYSTICK_MICROSECOND) {
-		;
-	}
-}
-
 /**
  * \brief Arch-specific implementation for libopencm3 targets
  * \param len Delay \e dt uSecs
@@ -148,7 +145,6 @@ void inner_delay_usec_one(void)
 void
 clock_delay_usec(uint16_t dt)
 {
-	while (dt--) {
-		inner_delay_usec_one();
-	}
+	uint32_t start = clock_useconds();
+	while (clock_useconds() - start < dt);
 }
