@@ -1,0 +1,4 @@
+TARGETDIRS+=../../../../platform
+TARGET=stm32ldiscovery
+OPENCM3_BASE=../../../../libopencm3
+include Makefile
