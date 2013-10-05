@@ -205,6 +205,11 @@ void mrf24j40_arch_spi_read(uint8_t *data, int length);
 #define MRF24J40_PWR_L_MINUS_0_5dB (0b001)
 #define MRF24J40_PWR_L_0dB         (0b000)
 
+/* BBREG2 definitions */
+#define MRF24J40_BBREG2_CCAMODE_CSED	(0x3 << 6)
+#define MRF24J40_BBREG2_CCAMODE_ED	(0x2 << 6)
+#define MRF24J40_BBREG2_CCAMODE_CS	(0x1 << 6)
+
 #define MRF24J40_TX_PWR_SET(large_val, small_val) ((large_val << 6) | (small_val << 3))
 
 typedef union _TX_status {

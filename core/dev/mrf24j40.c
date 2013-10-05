@@ -592,8 +592,10 @@ mrf24j40_init(void)
   set_long_add_mem(MRF24J40_SLPCON1, 0b00100001);     /* as suggested by the datasheet */
 
   /* Program CCA, RSSI threshold values */
-  set_short_add_mem(MRF24J40_BBREG2, 0b01111000);     /* Recommended value by the datashet */
-  set_short_add_mem(MRF24J40_CCAEDTH, 0b01100000);    /* Recommended value by the datashet */
+  /* use "recommended" threshold value */
+  set_short_add_mem(MRF24J40_BBREG2, MRF24J40_BBREG2_CCAMODE_CS | (0xE << 2));
+  /* CCA ED threshold ~ -69 dBm datasheet recommended value */
+  set_short_add_mem(MRF24J40_CCAEDTH, 0x60);
 
 #ifdef MRF24J40MB
   /* Activate the external amplifier needed by the MRF24J40MB */
