@@ -587,7 +587,7 @@ mrf24j40_init(void)
   set_long_add_mem(MRF24J40_RFCON6, 0b10010000);
 
   set_long_add_mem(MRF24J40_RFCON7, 0b10000000);      /* Sleep clock = 100kHz */
-  set_long_add_mem(MRF24J40_RFCON8, 0b00000010);      /* as suggested by the datasheet */
+  set_long_add_mem(MRF24J40_RFCON8, 0x10); /* as suggested by the datasheet */
 
   set_long_add_mem(MRF24J40_SLPCON1, 0b00100001);     /* as suggested by the datasheet */
 
