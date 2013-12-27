@@ -43,6 +43,11 @@
 #include <stdio.h>
 #include <string.h>
 
+
+extern int mrf24j40_irq_count;;
+extern int mrf24j40_irq_count_bad;
+
+
 #define UDP_PORT 1234
 
 #define SEND_INTERVAL		(3 * CLOCK_SECOND)
@@ -71,6 +76,8 @@ PROCESS_THREAD(broadcast_example_process, ev, data)
 {
   static struct etimer periodic_timer;
   static struct etimer send_timer;
+  static int loop;
+  static char kbuf[30];
   uip_ipaddr_t addr;
 
   PROCESS_BEGIN();
@@ -86,9 +93,10 @@ PROCESS_THREAD(broadcast_example_process, ev, data)
     etimer_set(&send_timer, SEND_TIME);
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&send_timer));
-    printf("Sending broadcast\n");
+    printf("Broadcast: irq total: %d, irq bad: %d\n", mrf24j40_irq_count, mrf24j40_irq_count_bad);
+    sprintf(kbuf, "Test-%d", loop++);
     uip_create_linklocal_allnodes_mcast(&addr);
-    simple_udp_sendto(&broadcast_connection, "Test", 4, &addr);
+    simple_udp_sendto(&broadcast_connection, kbuf, strlen(kbuf), &addr);
   }
 
   PROCESS_END();

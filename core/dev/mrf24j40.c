@@ -848,6 +848,9 @@ mrf24j40_pending_packet(void)
 {
   return pending;
 }
+
+volatile int mrf24j40_irq_count = 0;
+volatile int mrf24j40_irq_count_bad = 0;
 /*---------------------------------------------------------------------------*/
 void mrf24j40_irq_handler(void)
 {
@@ -855,10 +858,11 @@ void mrf24j40_irq_handler(void)
   TX_status tx_status;
   
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
-
+  mrf24j40_irq_count++;
   int_status.val = get_short_add_mem(MRF24J40_INTSTAT);
 
   if(!int_status.val) {
+    mrf24j40_irq_count_bad++;
     return;  // FIXME - bad return path! (add energest _at least_)
   }
 
