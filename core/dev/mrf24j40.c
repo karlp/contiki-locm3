@@ -181,7 +181,7 @@ reset_rf_state_machine(void)
   set_short_add_mem(MRF24J40_RFCTL, rfctl | 0b00000100);
   set_short_add_mem(MRF24J40_RFCTL, rfctl & 0b11111011);
   
-  clock_delay_usec(2500);
+  clock_delay_usec(200); // from manual
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -477,12 +477,7 @@ wake(void)
 {
   /* Wake-up */
   mrf24j40_arch_wake_pin(1);
-
-  /* RF State Machine reset */
-  set_short_add_mem(MRF24J40_RFCTL, 0b00000100);
-  set_short_add_mem(MRF24J40_RFCTL, 0b00000000);
-    
-  clock_delay_usec(2500);
+  reset_rf_state_machine();
 }
 /*---------------------------------------------------------------------------*/
 int
@@ -529,9 +524,9 @@ mrf24j40_init(void)
   }
 
   mrf24j40_arch_hard_reset(1);
-  clock_delay_usec(2500);
+  clock_delay_usec(1 * 1000); // my gut
   mrf24j40_arch_hard_reset(0);
-  clock_delay_usec(2500);
+  clock_delay_usec(2 * 1000); // from manual
 
   /*
    * bit 7:3 reserved: Maintain as ‘0’
@@ -564,16 +559,16 @@ mrf24j40_init(void)
    *         Transmitter on time before beginning of packet. TXONT is a 9-bit value. TXONT<6:0> bits are located
    *         in SYMTICKH<7:1>. Units: tick (50 ns). Default value = 0x028 (40 * 50 ns = 2 μs).
    */
-  set_short_add_mem(MRF24J40_PACON2, 0b10011000);
+  set_short_add_mem(MRF24J40_PACON2, 0b10011000); //y
 
-  mrf24j40_set_channel(MRF24J40_DEFAULT_CHANNEL);
+  set_short_add_mem(MRF24J40_TXSTBL, 0x95); // from manual
 
-  set_long_add_mem(MRF24J40_RFCON1, 0b00000010);      /* program the RF and Baseband Register */
+  set_long_add_mem(MRF24J40_RFCON0, 0x03); // from manual
+
+  set_long_add_mem(MRF24J40_RFCON1, 0b00000010); // XXX 2 vs 1     /* program the RF and Baseband Register */
                                                       /* as suggested by the datasheet */
 
   set_long_add_mem(MRF24J40_RFCON2, 0b10000000);      /* enable PLL */
-
-  mrf24j40_set_tx_power(0b00000000);                  /* set power 0dBm (plus 20db power amplifier 20dBm)*/
 
   /* 
    * Set up 
@@ -584,7 +579,7 @@ mrf24j40_init(void)
    * bit 3   '0' battery monitor disabled
    * bit 2:0 '000' reserved
    */
-  set_long_add_mem(MRF24J40_RFCON6, 0b10010000);
+  set_long_add_mem(MRF24J40_RFCON6, 0b10010000); // y
 
   set_long_add_mem(MRF24J40_RFCON7, 0b10000000);      /* Sleep clock = 100kHz */
   set_long_add_mem(MRF24J40_RFCON8, 0x10); /* as suggested by the datasheet */
@@ -593,7 +588,8 @@ mrf24j40_init(void)
 
   /* Program CCA, RSSI threshold values */
   /* use "recommended" threshold value */
-  set_short_add_mem(MRF24J40_BBREG2, MRF24J40_BBREG2_CCAMODE_CS | (0xE << 2));
+  //set_short_add_mem(MRF24J40_BBREG2, MRF24J40_BBREG2_CCAMODE_CS | (0xE << 2));
+  set_short_add_mem(MRF24J40_BBREG2, 0x80);  // datasheet for non-beacon
   /* CCA ED threshold ~ -69 dBm datasheet recommended value */
   set_short_add_mem(MRF24J40_CCAEDTH, 0x60);
 
@@ -609,12 +605,21 @@ mrf24j40_init(void)
   PRINTF("MRF24J40 Init append RSSI and LQI to packet\n");
 #endif
 
+  /* enable tx and rx regular irqs */
+  set_short_add_mem(MRF24J40_INTCON, 0b11110110);
+
+  mrf24j40_set_tx_power(0b00000000);                  /* set power 0dBm (plus 20db power amplifier 20dBm)*/
+
+  mrf24j40_set_channel(MRF24J40_DEFAULT_CHANNEL);
+
+#if NO_ONE_SAYS_TO_DO_THIS
   /*
    * Wait until the radio state machine is not on rx mode
    */
   do {
     i = get_long_add_mem(MRF24J40_RFSTATE);
   } while((i & 0xA0) != 0xA0);
+#endif
 
   i = 0;
 
@@ -673,15 +678,14 @@ mrf24j40_init(void)
 	/*
 	 * Set TX turn around time as defined by IEEE802.15.4 standard
 	 */
-  set_short_add_mem(MRF24J40_TXSTBL, 0b10010101);
   set_short_add_mem(MRF24J40_TXTIME, 0b00110000);
 
 #ifdef INT_POLARITY_HIGH
   /* Set interrupt edge polarity high */
-  set_long_add_mem(MRF24J40_SLPCON0, 0b00000011);
+  set_long_add_mem(MRF24J40_SLPCON0, 0b00000010);
   PRINTF("MRF24J40 Init INT Polarity High\n");
 #else
-  set_long_add_mem(MRF24J40_SLPCON0, 0b00000001);
+  set_long_add_mem(MRF24J40_SLPCON0, 0b00000000);
   PRINTF("MRF24J40 Init INT Polarity Low\n");
 #endif
 
@@ -698,25 +702,11 @@ mrf24j40_init(void)
   reset_rf_state_machine();
 
   /* Flush RX FIFO */
-  flush_rx_fifo();
+  //flush_rx_fifo();
 
   process_start(&mrf24j40_process, NULL);
 
-  /*
-   *
-   * Setup interrupts.
-   *
-   * set INTCON
-   * bit 7 '1' Disables the sleep alert interrupt
-   * bit 6 '1' Disables the wake-up alert interrupt
-   * bit 5 '1' Disables the half symbol timer interrupt
-   * bit 4 '1' Disables the security key request interrupt
-   * bit 3 '0' Enables the RX FIFO reception interrupt
-   * bit 2 '1' Disables the TX GTS2 FIFO transmission interrupt
-   * bit 1 '1' Disables the TX GTS1 FIFO transmission interrupt
-   * bit 0 '0' Enables the TX Normal FIFO transmission interrupt
-   */
-  set_short_add_mem(MRF24J40_INTCON, 0b11110110);
+  mrf24j40_arch_irq_enable();
   
   return 0;
 }
